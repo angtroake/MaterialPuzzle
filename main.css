@@ -1,3 +1,10 @@
 body{
     margin: 0px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#canvasMain{
+    margin: 0 auto;
 }
