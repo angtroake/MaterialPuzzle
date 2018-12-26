@@ -30,6 +30,10 @@ var moonY = 0;
 var isRaining = false;
 var rainOpacity = 0;
 
+//x, y, length, vX
+var rainParticles = [];
+var maxRain = 300;
+
 var mapObjects = [];
 
 
@@ -74,13 +78,13 @@ document.addEventListener("wheel", function(e){
 function render(){
     //Shadow Settings
     ctx.shadowBlur = 10;
-    ctx.shadowColor = 'rgb(0,0,0,0.5)';
+    ctx.shadowColor = 'rgb(0,0,0,0.3)';
     
     //render sky
     ctx.fillStyle = 'hsl(210, 100%,' + Math.abs(maxTime/2 - time)/(maxTime/120) + '%)';
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
-    //render
+    //render Stars
     let starAlpha = (timeState == timeStateNight)? Math.abs(Math.abs(0.5 -time/maxTime)-0.25)*10 : 0;
     data.stars.forEach(function(star){
         ctx.beginPath();
@@ -99,10 +103,24 @@ function render(){
     ctx.fillStyle = 'white';
     ctx.fill();
 
+    //Rain Clouds
     if(rainOpacity > 0){
-        ctx.fillStyle='rgba(200,200,200,' + rainOpacity + ')';
-        ctx.fillRect(50,50,100,100);
+        //ctx.shadowColor='hsl(233,46%,' + (51 + 10*(Math.cos(time/(maxTime/(2*Math.PI))))) + '%)';
+        ctx.fillStyle='hsla(0,0%,' + (47 + 10*(Math.cos(time/(maxTime/(2*Math.PI))))) + '%,' + rainOpacity*0.8 + ')';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
     }
+
+    ctx.strokeStyle = 'rgba(174,194,224,0.8)';
+    ctx.lineWidth = 1;
+    ctx.lineCap = 'round';
+    rainParticles.forEach(function(rain){
+        ctx.beginPath();
+        ctx.moveTo(rain.x, rain.y);
+        ctx.lineTo(rain.x+ rain.velX/2, rain.y+ rain.velY/2)
+        //ctx.moveTo(rain.x + 400*Math.cos(rainParticles.indexOf(rain)), rain.y);
+        //ctx.lineTo(rain.x + 400*Math.cos(rainParticles.indexOf(rain)) + rain.velX/2, rain.y+rain.velY/2);
+        ctx.stroke();
+    });
 
 
     mapObjects.forEach(function(mo){
@@ -136,14 +154,13 @@ function tick(){
 
     //Time state Handle
     if(time > maxTime/4 && time < maxTime*3/4){
-        if(isRaining && timeState == timeStateDay){
-            isRaining = false;
-        }
         timeState = timeStateNight;
     }else{
         if(timeState == timeStateNight){
             if(Math.floor(Math.random()*2) == 0){
                 isRaining = true;
+            }else{
+                isRaining = false;
             }
         }
         timeState = timeStateDay;
@@ -164,6 +181,28 @@ function tick(){
     sunY = (canvas.height - canvas.height/4) + canvas.height/1.5*Math.sin(time/(maxTime/(2*Math.PI)) - Math.PI/2);
     moonX = (canvas.width/2) + canvas.height/1.5*Math.cos(time/(maxTime/(2*Math.PI)) - Math.PI/2);
     moonY = (canvas.height - canvas.height/4) - canvas.height/1.5*Math.sin(time/(maxTime/(2*Math.PI)) - Math.PI/2);
+
+    //New Rain
+    if(rainParticles.length < maxRain && isRaining){
+        for(let i = 0 ; i < 5; i++){
+            let newRain = {'x': Math.random()*canvas.width, 'y': 0, 'velY': (Math.random()*10 + 40), 'velX': (Math.random()*3 + 1)*(Math.random()*2 - 1)}
+            rainParticles.push(newRain);
+        }
+    }
+
+    //Handling Rain
+    rainParticles.forEach(function(rain){
+        if(rain.y > canvas.height*3/4){
+            rainParticles.splice(rainParticles.indexOf(rain),1);
+        }
+
+        rain.y += rain.velY;
+        rain.x += rain.velX;
+    });
+
+    console.log(rainParticles.length);
+
+
 
     if(isRaining && rainOpacity < 1){
         rainOpacity+=0.05;
@@ -215,6 +254,8 @@ class Mountain{
 
         let peakHeight = this.height/4;
 
+        ctx.shadowBlur = 0;
+
         ctx.beginPath();
         ctx.fillStyle = 'hsl(100, 0%, ' + (100 + 10*(Math.cos(time/(maxTime/(2*Math.PI))))) + '%)';
         ctx.moveTo(mapX + this.width/2 - (peakHeight)/Math.tan(angle), mapY - this.height + peakHeight);
@@ -222,6 +263,8 @@ class Mountain{
         ctx.lineTo(mapX + this.width/2, mapY - this.height);
         ctx.fill();
         
+
+        ctx.shadowBlur = 10;
     }
 
     tick(){
