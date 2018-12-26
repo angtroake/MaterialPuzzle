@@ -109,10 +109,18 @@ function render(){
         mo.render();
     });
 
+    buildings.forEach(function(b){
+        b.render();
+    });
+
+    citizens.forEach(function(c){
+        c.render();
+    });
+
 
 
     //rendering ground
-    ctx.fillStyle = 'hsl(122, 39%, ' + (32 + 10*(Math.cos(time/(maxTime/(2*Math.PI))))) + '%)';
+    ctx.fillStyle = 'hsl(122, 50%, ' + (32 + 10*(Math.cos(time/(maxTime/(2*Math.PI))))) + '%)';
     ctx.fillRect(0, canvas.height - canvas.height/4, canvas.width, canvas.height/2);
 }
 
@@ -166,6 +174,14 @@ function tick(){
 
     mapObjects.forEach(function(mo){
         mo.tick();
+    });
+
+    buildings.forEach(function(b){
+        b.tick();
+    });
+
+    citizens.forEach(function(c){
+        c.tick();
     });
 }
 
@@ -248,6 +264,71 @@ class Building{
     }
 }
 
+class Citizen{
+    constructor(building){
+        this.building = building;
+
+        this.x = building.x;
+        this.y = building.y;
+        this.width = 10;
+        this.height = 20;
+
+        this.wait = 0;
+
+        this.target = {"x": building.x, "y": building.y};
+    }
+
+    render(){
+        let mapX = this.x * canvas.width;
+        let mapY = this.y * canvas.height;
+
+        ctx.fillStyle = 'white';
+
+        if(timeState != timeStateNight && !isRaining || (Math.abs(this.x - this.building.x) >= 0.001)){
+            if(this.wait <= 0){
+                ctx.save();
+                ctx.translate(mapX + this.width/2, mapY + this.height/2);
+                ctx.rotate(Math.cos((this.x - this.building.x)*150)/5);
+                ctx.fillRect(-this.width/2, -this.height/2, this.width, -this.height);
+                ctx.restore();
+            }else{
+                ctx.fillRect(mapX, mapY, this.width, -this.height);
+            }
+        }
+
+        //render target
+        /*
+        ctx.beginPath();
+        ctx.fillStyle = 'red';
+        ctx.arc(this.target.x*canvas.width, this.target.y*canvas.height - 5, 3, 0, 2*Math.PI, false);
+        ctx.fill();
+        */
+    }
+
+    tick(){
+        if(timeState == timeStateDay && !isRaining){
+            if(Math.abs(this.x - this.target.x) <= 0.005){
+                this.wait = Math.floor(Math.random()*40 + 1);
+                var newX = -0;
+                do{
+                    newX = this.x + Math.random()/4 * ((Math.floor(Math.random()*2 + 1) == 1)? 1:-1);
+                    
+                }while(newX < 0.0 || newX > 1.0);
+                this.target.x = newX;
+            }
+            if(this.wait > 0)
+                this.wait--;
+            else
+                this.x += (this.target.x - this.x)/Math.abs(this.target.x - this.x)*0.002;
+        }else if(timeState == timeStateNight){
+            if(Math.abs(this.x - this.building.x) >= 0.001){
+                this.x += (this.building.x - this.x)/Math.abs(this.building.x - this.x)*0.002;
+            }
+        }
+        console.log(this.x);
+    }
+}
+
 
 var data = {
     "stars":[
@@ -263,7 +344,10 @@ var data = {
         [0.8,0.75,0, 0, 70, 40],[0.82, 0.75, 1, 240, 67, 58]
     ]
 }
+//
 
+var citizens = [];
+var buildings = [];
 
 data.mountains.forEach(function(m){
     mapObjects.push(new Mountain(m[0], m[1], m[2], m[3]));
@@ -271,7 +355,8 @@ data.mountains.forEach(function(m){
 
 data.buildings.forEach(function(b){
     let build = new Building(b[0], b[1], b[2], b[3], b[4], b[5]);
-    mapObjects.push(build);
+    buildings.push(build);
+    citizens.push(new Citizen(build));
 });
 
 
