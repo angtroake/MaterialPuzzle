@@ -264,6 +264,13 @@ class Building{
     }
 }
 
+/**
+ * 
+ *  CITIZEN
+ * 
+ * 
+ */
+
 class Citizen{
     constructor(building){
         this.building = building;
@@ -283,18 +290,33 @@ class Citizen{
         let mapY = this.y * canvas.height;
 
         ctx.fillStyle = 'white';
+        ctx.shadowBlur = 0;
 
         if(timeState != timeStateNight && !isRaining || (Math.abs(this.x - this.building.x) >= 0.001)){
             if(this.wait <= 0){
                 ctx.save();
                 ctx.translate(mapX + this.width/2, mapY + this.height/2);
                 ctx.rotate(Math.cos((this.x - this.building.x)*150)/5);
-                ctx.fillRect(-this.width/2, -this.height/2, this.width, -this.height);
+                
+                //ctx.fillRect(-this.width/2, -this.height/2, this.width, -this.height);
+
+                ctx.beginPath();
+                ctx.arc(0, -this.height*1.5 + this.height/5, this.height/5, 0, 2*Math.PI,false);//head
+                ctx.arc(0, -this.height/1.25, this.width/2, 0, 2*Math.PI, false); //torso
+                ctx.fill();
+                ctx.fillRect(-this.width/2, -this.height/2, this.width, -this.height/3);
                 ctx.restore();
             }else{
-                ctx.fillRect(mapX, mapY, this.width, -this.height);
+                //ctx.fillRect(mapX, mapY, this.width, -this.height);
+                ctx.beginPath();
+                ctx.arc(mapX + this.width/2, mapY - this.height+this.height/5, this.height/5, 0, 2*Math.PI,false); //head
+                ctx.arc(mapX + this.width/2, mapY - this.height/4, this.width/2, 0, 2*Math.PI, false); //torso
+                ctx.fill();
+                ctx.fillRect(mapX, mapY, this.width, -this.height/4);
             }
         }
+
+        ctx.shadowBlur = 12;
 
         //render target
         /*
@@ -323,9 +345,9 @@ class Citizen{
         }else if(timeState == timeStateNight){
             if(Math.abs(this.x - this.building.x) >= 0.001){
                 this.x += (this.building.x - this.x)/Math.abs(this.building.x - this.x)*0.002;
+                this.target.x = this.building.x;
             }
         }
-        console.log(this.x);
     }
 }
 
