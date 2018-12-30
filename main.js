@@ -103,6 +103,7 @@ function render(){
     ctx.fillStyle = 'white';
     ctx.fill();
 
+    /*
     //Rain Clouds
     if(rainOpacity > 0){
         //ctx.shadowColor='hsl(233,46%,' + (51 + 10*(Math.cos(time/(maxTime/(2*Math.PI))))) + '%)';
@@ -121,7 +122,7 @@ function render(){
         //ctx.lineTo(rain.x + 400*Math.cos(rainParticles.indexOf(rain)) + rain.velX/2, rain.y+rain.velY/2);
         ctx.stroke();
     });
-
+    */
 
     mapObjects.forEach(function(mo){
         mo.render();
@@ -158,7 +159,7 @@ function tick(){
     }else{
         if(timeState == timeStateNight){
             if(Math.floor(Math.random()*2) == 0){
-                isRaining = true;
+                //isRaining = true;
             }else{
                 isRaining = false;
             }
@@ -182,7 +183,7 @@ function tick(){
     moonX = (canvas.width/2) + canvas.height/1.5*Math.cos(time/(maxTime/(2*Math.PI)) - Math.PI/2);
     moonY = (canvas.height - canvas.height/4) - canvas.height/1.5*Math.sin(time/(maxTime/(2*Math.PI)) - Math.PI/2);
 
-    //New Rain
+    /*//New Rain
     if(rainParticles.length < maxRain && isRaining){
         for(let i = 0 ; i < 5; i++){
             let newRain = {'x': Math.random()*canvas.width, 'y': 0, 'velY': (Math.random()*10 + 40), 'velX': (Math.random()*3 + 1)*(Math.random()*2 - 1)}
@@ -200,8 +201,6 @@ function tick(){
         rain.x += rain.velX;
     });
 
-    console.log(rainParticles.length);
-
 
 
     if(isRaining && rainOpacity < 1){
@@ -209,6 +208,8 @@ function tick(){
     }
     else if(!isRaining && rainOpacity > 0)
         rainOpacity-=0.05;
+
+    */
 
 
     mapObjects.forEach(function(mo){
@@ -395,6 +396,55 @@ class Citizen{
 }
 
 
+class WindowController{
+    constructor(width, height){
+        this.width = width;
+        this.height = height;
+        this.childWindow = null;
+        this.openWindow();
+    }
+
+    render(){
+        
+    }
+
+    tick(){
+        if(this.childWindow.innerWidth != this.width || this.childWindow != this.height){
+            this.childWindow.resizeTo(this.width, this.height);
+        }
+    }
+
+    openWindow(){
+        this.childWindow = open("","Cloud","width=" + this.width + ",height=" + this.height + ",menubar=0,resizable=0,status=0,scrollbars=0,toolbar=no,titlebar=0", false);
+        this.childWindow.onbeforeunload = function(){this.childWindow = null;}
+    }
+}
+
+class TimeMachine extends WindowController{
+    constructor(){
+        super(150,150);
+        this.childWindow.document.head.innerHTML += "<title>Time Machine</title>";
+        this.childWindow.document.head.innerHTML += "<style>body{margin: 0;}</style>"
+        this.childWindow.document.body.innerHTML += "<canvas id='timemachine' width='" + this.childWindow.innerWidth + "' height='" + this.childWindow.innerHeight + "'></canvas>";
+        this.tmCanvas = this.childWindow.document.getElementById("timemachine");
+        this.ctx = this.tmCanvas.getContext('2d');
+        
+    }
+
+    render(){
+        this.ctx.drawImage(canvas, this.childWindow.screenX + this.tmCanvas.offsetLeft - (window.screenX + canvas.offsetLeft), this.childWindow.screenY + this.tmCanvas.offsetTop + (this.childWindow.outerHeight - this.childWindow.innerHeight) - (window.screenY + canvas.offsetTop + (window.outerHeight - window.innerHeight)), this.childWindow.innerWidth, this.childWindow.innerHeight, 0, 0,  this.childWindow.innerWidth, this.childWindow.innerHeight);
+    }
+
+    tick(){
+        super.tick();
+
+        this.tmCanvas.width = this.childWindow.innerWidth;
+        this.tmCanvas.height = this.childWindow.innerHeight;
+        
+    }
+}
+
+
 var data = {
     "stars":[
         [0.2,0.2,1],[0.15923076923076923, 0.23846153846153847, 1],[0.17615384615384616, 0.2858974358974359, 1],[0.2153846153846154, 0.25384615384615383, 1],[0.21307692307692308, 0.1358974358974359, 1],[0.24615384615384617, 0.08974358974358974, 1],[0.29307692307692307, 0.08974358974358974, 1],[0.39, 0.18461538461538463, 1],[0.4176923076923077, 0.24871794871794872, 1],[0.45384615384615384, 0.2012820512820513, 1],
@@ -429,3 +479,6 @@ data.buildings.forEach(function(b){
 
 mapObjects.push(new Mountain(0.07, 0.75, 300, 300));
 mapObjects.push(new Mountain(0.2, 0.75, 200, 200));
+
+
+mapObjects.push(new TimeMachine());
