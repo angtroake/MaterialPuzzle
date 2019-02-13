@@ -2,7 +2,9 @@
  * GLOBAL Variable Setup
  */
 var canvas = document.getElementById("canvasMain");
+var canvasTimeMachine = document.getElementById("canvasTimeMachine");
 var ctx = canvas.getContext("2d");
+var ctxTimeMachine = canvasTimeMachine.getContext("2d");
 
 var ticksPerSecond = 20;
 
@@ -79,10 +81,15 @@ function render(){
     //Shadow Settings
     ctx.shadowBlur = 10;
     ctx.shadowColor = 'rgb(0,0,0,0.3)';
+    ctxTimeMachine.shadowBlur = 10;
+    ctxTimeMachine.shadowColor = 'rgb(0,0,0,0.3)';
     
     //render sky
     ctx.fillStyle = 'hsl(210, 100%,' + Math.abs(maxTime/2 - time)/(maxTime/120) + '%)';
     ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    ctxTimeMachine.fillStyle = 'hsl(207, 90%,' + Math.abs(maxTime/2 - time)/(maxTime/120) + '%)';
+    ctxTimeMachine.fillRect(0,0,canvas.width,canvas.height);
 
     //render Stars
     let starAlpha = (timeState == timeStateNight)? Math.abs(Math.abs(0.5 -time/maxTime)-0.25)*10 : 0;
@@ -91,6 +98,10 @@ function render(){
         ctx.arc(canvas.width*star[0], canvas.height*star[1], star[2], 0, 2*Math.PI, false);
         ctx.fillStyle = "rgba(255,255,255," + starAlpha + ")";
         ctx.fill();
+        ctxTimeMachine.beginPath();
+        ctxTimeMachine.arc(canvas.width*star[0], canvas.height*star[1], star[2], 0, 2*Math.PI, false);
+        ctxTimeMachine.fillStyle = "rgba(255,255,255," + starAlpha + ")";
+        ctxTimeMachine.fill();
     });
 
     //Render Sun and moon
@@ -102,6 +113,15 @@ function render(){
     ctx.arc(moonX, moonY, 50, 0, 2*Math.PI, false);
     ctx.fillStyle = 'white';
     ctx.fill();
+
+    ctxTimeMachine.beginPath();
+    ctxTimeMachine.arc(sunX, sunY, 75, 0, 2*Math.PI, false);
+    ctxTimeMachine.fillStyle = 'rgb(255, 235, 59)';
+    ctxTimeMachine.fill();
+    ctxTimeMachine.beginPath();
+    ctxTimeMachine.arc(moonX, moonY, 50, 0, 2*Math.PI, false);
+    ctxTimeMachine.fillStyle = 'white';
+    ctxTimeMachine.fill();
 
     /*
     //Rain Clouds
@@ -137,10 +157,20 @@ function render(){
     });
 
 
+    prehistoricObjects.forEach(function(pO){
+        pO.render();
+    });
 
     //rendering ground
     ctx.fillStyle = 'hsl(122, 50%, ' + (32 + 10*(Math.cos(time/(maxTime/(2*Math.PI))))) + '%)';
     ctx.fillRect(0, canvas.height - canvas.height/4, canvas.width, canvas.height/2);
+    ctxTimeMachine.fillStyle = 'hsl(122, 50%, ' + (32 + 10*(Math.cos(time/(maxTime/(2*Math.PI))))) + '%)';
+    ctxTimeMachine.fillRect(0, canvas.height - canvas.height/4, canvas.width, canvas.height/2);
+
+
+    windows.forEach(function(w){
+        w.render();
+    });
 }
 
 function tick(){
@@ -177,6 +207,8 @@ function tick(){
     }
     canvas.height = canvas.width * 3/5;
 
+    canvasTimeMachine.width = canvas.width;
+    canvasTimeMachine.height = canvas.height;
 
     sunX = (canvas.width/2) - canvas.height/1.5*Math.cos(time/(maxTime/(2*Math.PI)) - Math.PI/2);
     sunY = (canvas.height - canvas.height/4) + canvas.height/1.5*Math.sin(time/(maxTime/(2*Math.PI)) - Math.PI/2);
@@ -223,6 +255,16 @@ function tick(){
     citizens.forEach(function(c){
         c.tick();
     });
+
+    prehistoricObjects.forEach(function(pO){
+        pO.tick();
+    });
+    
+    windows.forEach(function(w){
+        w.tick();
+    });
+
+
 }
 
 /**
@@ -245,6 +287,7 @@ class Mountain{
         let mapX = this.x * canvas.width;
         let mapY = this.y * canvas.height;
         let angle = Math.atan(this.height/(this.width/2));
+        let peakHeight = this.height/4;
 
         ctx.beginPath();
         ctx.fillStyle = 'hsl(0, 0%, ' + (40 + 10*(Math.cos(time/(maxTime/(2*Math.PI))))) + '%)';
@@ -253,7 +296,6 @@ class Mountain{
         ctx.lineTo(mapX + this.width, mapY);
         ctx.fill();
 
-        let peakHeight = this.height/4;
 
         ctx.shadowBlur = 0;
 
@@ -266,6 +308,19 @@ class Mountain{
         
 
         ctx.shadowBlur = 10;
+
+        //TIME MACHINE RENDER
+        ctxTimeMachine.shadowBlur = 10;
+
+        ctxTimeMachine.beginPath();
+        ctxTimeMachine.fillStyle = 'hsl(0, 0%, ' + (40 + 10*(Math.cos(time/(maxTime/(2*Math.PI))))) + '%)';
+        ctxTimeMachine.moveTo(mapX, mapY);
+        ctxTimeMachine.bezierCurveTo(mapX + this.width/6, mapY - this.height/2, mapX + this.width - this.width/6, mapY - this.height/2, mapX + this.width, mapY);
+        //ctxTimeMachine.lineTo(mapX + this.width/2, mapY - this.height/2);
+        //ctxTimeMachine.lineTo(mapX + this.width, mapY);
+        ctxTimeMachine.fill();
+
+        //t = o/a
     }
 
     tick(){
@@ -395,12 +450,131 @@ class Citizen{
     }
 }
 
+class Dinosaur{
+    constructor(x,y){
+        this.x = x;
+        this.y = y;
+
+        this.width = 50;
+        this.height = 100;
+
+        this.world = "prehistoric";
+
+        this.citizenTarget = null;
+        this.target = {"x": 0.5, "y": 0.5};
+    }
+
+    render(){
+        let mapX = this.x * canvas.width;
+        let mapY = this.y * canvas.height;
+
+        var ctx = (this.world == "prehistoric" ? ctxTimeMachine: ctx);
+
+        ctx.fillStyle = 'red';
+        ctx.shadowBlur = 0;
+
+        if(this.wait <= 0){
+            ctx.save();
+            ctx.translate(mapX + this.width/2, mapY + this.height/2);
+            ctx.rotate(Math.cos((this.x - this.target.x)*150)/5);
+            
+            
+            ctx.fillRect(-this.width/2, -this.height/2, this.width, -this.height);
+            ctx.restore();
+        }else{
+            //ctx.fillRect(mapX, mapY, this.width, -this.height);
+            ctx.fillRect(mapX, mapY, this.width, -this.height);
+        }
+
+        ctx.shadowBlur = 10;
+    }
+
+    tick(){
+        if(Math.abs(this.x - this.target.x) <= 0.005){
+            if(this.world == "prehistoric"){
+                this.wait = Math.floor(Math.random()*40 + 1);
+                this._randomTarget();
+                
+            }else if(this.world == "present"){
+                if(this.citizenTarget != null){
+                    citizens.shift();
+                    this.citizenTarget = null;
+                }
+
+                this.wait = Math.floor(Math.random()*40 + 1);
+                if(citizens.length > 0){
+                    this.citizenTarget = citizens[0];
+                }else{
+                    this._randomTarget();
+                }
+            }
+        }
+
+        if(this.citizenTarget!= null){
+            this.target.x = this.citizenTarget.x;
+            this.target.y = this.citizenTarget.y;
+        }
+
+        if(this.wait > 0)
+            this.wait--;
+        else
+            this.x += (this.target.x - this.x)/Math.abs(this.target.x - this.x)*0.002;
+
+
+    }
+
+    _randomTarget(){
+        var newX = -0;
+        do{
+            newX = this.x + Math.random()/4 * ((Math.floor(Math.random()*2 + 1) == 1)? 1:-1);
+            
+        }while(newX < 0.0 || newX > 1.0);
+        this.target.x = newX;
+    }
+}
+
+class Tree{
+    constructor(x, y, type){
+        this.x = x;
+        this.y = y;
+        this.type = type;
+        var imgName = "";
+        switch(type){
+            case 1:
+                imgName = "tree2";
+                break;
+            case 2:
+                imgName = "tree3";
+                break;
+            case 3:
+                imgName = "tree4";
+                break;
+            default:
+                imgName = "tree1"
+                break;
+
+        }
+
+        this.image = document.getElementById(imgName);
+        this.height = this.image.height;
+    }
+
+    render(){
+            ctxTimeMachine.drawImage(this.image, this.x*canvasTimeMachine.width, this.y*canvasTimeMachine.height-this.height);
+    }
+
+    tick(){
+
+    }
+}
+
 
 class WindowController{
     constructor(width, height){
         this.width = width;
         this.height = height;
         this.childWindow = null;
+        windows.push(this);
         this.openWindow();
     }
 
@@ -432,7 +606,9 @@ class TimeMachine extends WindowController{
     }
 
     render(){
-        this.ctx.drawImage(canvas, this.childWindow.screenX + this.tmCanvas.offsetLeft - (window.screenX + canvas.offsetLeft), this.childWindow.screenY + this.tmCanvas.offsetTop + (this.childWindow.outerHeight - this.childWindow.innerHeight) - (window.screenY + canvas.offsetTop + (window.outerHeight - window.innerHeight)), this.childWindow.innerWidth, this.childWindow.innerHeight, 0, 0,  this.childWindow.innerWidth, this.childWindow.innerHeight);
+        this.ctx.fillStyle = 'gray';
+        this.ctx.fillRect(0,0,this.tmCanvas.width, this.tmCanvas.height);
+        this.ctx.drawImage(canvasTimeMachine, this.childWindow.screenX + this.tmCanvas.offsetLeft - (window.screenX + canvas.offsetLeft), this.childWindow.screenY + this.tmCanvas.offsetTop + (this.childWindow.outerHeight - this.childWindow.innerHeight) - (window.screenY + canvas.offsetTop + (window.outerHeight - window.innerHeight)), this.childWindow.innerWidth, this.childWindow.innerHeight, 0, 0,  this.childWindow.innerWidth, this.childWindow.innerHeight);
     }
 
     tick(){
@@ -461,24 +637,40 @@ var data = {
 }
 //
 
+
 var citizens = [];
 var buildings = [];
+var windows = [];
 
-data.mountains.forEach(function(m){
-    mapObjects.push(new Mountain(m[0], m[1], m[2], m[3]));
-});
+var prehistoricObjects = [];
 
-data.buildings.forEach(function(b){
-    let build = new Building(b[0], b[1], b[2], b[3], b[4], b[5]);
-    buildings.push(build);
-    citizens.push(new Citizen(build));
-});
+var timemachine = null;
 
 
 
+window.onload = function(){
+    var pTreeX = 0;
+    while(pTreeX < 1){
+        prehistoricObjects.push(new Tree(pTreeX , 0.75, Math.floor(Math.random()*4)));
+        pTreeX += Math.random()*0.05;
+    }
+    
+    data.mountains.forEach(function(m){
+        mapObjects.push(new Mountain(m[0], m[1], m[2], m[3]));
+    });
+    
+    data.buildings.forEach(function(b){
+        let build = new Building(b[0], b[1], b[2], b[3], b[4], b[5]);
+        buildings.push(build);
+        citizens.push(new Citizen(build));
+    });
+       
 
-mapObjects.push(new Mountain(0.07, 0.75, 300, 300));
-mapObjects.push(new Mountain(0.2, 0.75, 200, 200));
+    mapObjects.push(new Mountain(0.07, 0.75, 300, 300));
+    mapObjects.push(new Mountain(0.2, 0.75, 200, 200));
 
 
-mapObjects.push(new TimeMachine());
+    prehistoricObjects.push(new Dinosaur(0.5, 0.75));
+
+    //timemachine = new TimeMachine();
+}

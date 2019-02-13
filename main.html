@@ -6,7 +6,22 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     </head> 
     <body>
-        <canvas id="canvasMain" width="200" height="100"></canvas>
+            <canvas id="canvasMain" width="200" height="100"></canvas>
+
+            <canvas id="canvasTimeMachine" style="opacity: 0; display: none;"></canvas>
+
+
+        <button style="position: absolute; bottom: 30px; left: 30px;" onclick="timemachine = new TimeMachine();" class="btn btn-primary">Open Time Machine</button>
+
+        <div style="display: none; ">
+            <img id="tree1" src="res/tree1.png"/>
+            <img id="tree2" src="res/tree2.png"/>
+            <img id="tree3" src="res/tree3.png"/>
+            <img id="tree4" src="res/tree4.png"/>
+        </div>
+
+
+
         <script src="main.js"></script>
     </body>
 </html>
