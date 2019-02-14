@@ -85,6 +85,7 @@ var objDragging = null;
 
 canvas.onclick = function(e){
     //PARTICLES.spawnParticle(PARTICLE_BLOOD, e.offsetX/canvas.width, e.offsetY/canvas.height, canvas, ctx);
+    
     onclick(e, e.offsetX, e.offsetY, "present");
 };
 
@@ -229,10 +230,34 @@ function render(){
         w.render();
     });
 
+    if(hasWon){
+        renderWonScreen();
+    }
+
     /*ctx.fillStyle = 'black';
     ctx.font = "30px Arial";
     ctx.fillText("(" + _mousePos.x + "," + _mousePos.y + ")", _mousePos.x + 10, _mousePos.y - 10);
     */
+}
+
+
+function renderWonScreen(){
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fillRect(0,0,canvas.width, canvas.height);
+
+    ctx.fillStyle = "white";
+    ctx.fillRect(200,100, canvas.width-400, canvas.height-200);
+
+    function centerText(text, x, font_size){
+        return x - text.length*font_size/4.2;
+    }
+
+    ctx.fillStyle = "black";
+    ctx.font='30px Arial';
+    var text = "Nice Job! you discovered the _______ ending!";
+    ctx.fillText(text, centerText(text, canvas.width/2, 30), 150, canvas.width-450);
+
+    
 }
 
 
@@ -587,7 +612,7 @@ class Dinosaur{
                 
             }else if(this.world == "present"){
                 if(this.citizenTarget != null){
-                    PARTICLES.spawnParticle(PARTICLE_BLOOD, this.citizenTarget.x, this.citizenTarget.y - 0.01, canvas, ctx);
+                    PARTICLES.spawnParticle(PARTICLE_BLOOD, this.citizenTarget.x, this.citizenTarget.y - 0.01, canvas, ctx, 1000);
                     citizens.shift();
                     this.citizenTarget = null;
                 }
@@ -801,7 +826,6 @@ class Particles{
         this.particles.forEach(function(particle){
             if(new Date().getTime() > particle.death){
                 partHandler.particles.splice(i, 1);
-                console.log("particled is dead");
                 return;
             }
 
@@ -819,7 +843,6 @@ class Particles{
 
     render(){
         this.particles.forEach(function(partile){
-            console.log(partile.bits[0].color);
             partile.bits.forEach(function(bit){;
                 partile.ctx.fillStyle = bit.color;
                 partile.ctx.fillRect(bit.x*partile.canvas.width, bit.y*partile.canvas.height, bit.size, bit.size);
@@ -859,6 +882,24 @@ var timemachine = null;
 
 
 window.onload = function(){
+    setup();
+}
+
+
+var PARTICLES = new Particles();
+
+
+function setup(){
+    hasWon = false;
+
+    time = 0;
+
+    citizens = [];
+    buildings = [];
+    windows = [];
+    prehistoricObjects = [];
+    mapObjects = [];
+
     var pTreeX = 0;
     while(pTreeX < 1){
         prehistoricObjects.push(new Tree(pTreeX , 0.75, Math.floor(Math.random()*4)));
@@ -884,6 +925,3 @@ window.onload = function(){
 
     //timemachine = new TimeMachine();
 }
-
-
-var PARTICLES = new Particles();
