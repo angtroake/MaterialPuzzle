@@ -12,6 +12,9 @@ var maxCanvasWidth = 1300;
 var minCanvasWidth = 1000;
 
 
+var hasWon = false;
+
+
 /**
  * Map Variables
  */
@@ -37,6 +40,7 @@ var rainParticles = [];
 var maxRain = 300;
 
 var mapObjects = [];
+
 
 
 /**
@@ -80,12 +84,13 @@ var objDragging = null;
 
 
 canvas.onclick = function(e){
-    onclick(e, e.offsetX, e.offsetY);
+    //PARTICLES.spawnParticle(PARTICLE_BLOOD, e.offsetX/canvas.width, e.offsetY/canvas.height, canvas, ctx);
+    onclick(e, e.offsetX, e.offsetY, "present");
 };
 
 //canvas.onmouseup = clickRelease;
 
-function onclick(e, x, y){
+function onclick(e, x, y, world){
     if(objDragging != null){
         objDragging = null;
         return;
@@ -98,8 +103,10 @@ function onclick(e, x, y){
             var obj = dragable[i];
             if(x >= obj.x && x <= obj.x + obj.width/canvas.width){
                 if(y <= obj.y && y >= obj.y - obj.height/canvas.height){
-                    objDragging = obj;
-                    break;
+                    if(world == obj.world){
+                        objDragging = obj;
+                        break;
+                    }
                 }
             }
         }
@@ -111,7 +118,6 @@ window.onmousemove = function(e){
     //_mousePos.x = e.offsetX;
 
     if(objDragging != null){
-        console.log("fwww");
         objDragging.ctx = ctx;
         objDragging.world = "present";
         objDragging.x = (e.offsetX - objDragging.width/2) / canvas.width;
@@ -210,6 +216,8 @@ function render(){
         pO.render();
     });
 
+    PARTICLES.render();
+
     //rendering ground
     ctx.fillStyle = 'hsl(122, 50%, ' + (32 + 10*(Math.cos(time/(maxTime/(2*Math.PI))))) + '%)';
     ctx.fillRect(0, canvas.height - canvas.height/4, canvas.width, canvas.height/2);
@@ -230,6 +238,8 @@ function render(){
 
 
 function tick(){
+
+        
     time++;
 
     //Clock wrap handle
@@ -317,6 +327,8 @@ function tick(){
     prehistoricObjects.forEach(function(pO){
         pO.tick();
     });
+
+    PARTICLES.tick();
     
     windows.forEach(function(w){
         w.tick();
@@ -511,6 +523,7 @@ class Dinosaur{
     constructor(x,y){
         this.x = x;
         this.y = y;
+        this.baseY = y;
 
         this.world = "prehistoric";
         this.ctx = ctxTimeMachine;
@@ -534,10 +547,15 @@ class Dinosaur{
         ctx.fillStyle = 'red';
         ctx.shadowBlur = 0;
 
-        if(this.wait <= 0){
+        if(this.wait <= 0 && objDragging != this){
             ctx.save();
             ctx.translate(mapX + this.width/2, mapY + this.height/2);
-            ctx.rotate(Math.cos((this.x - this.target.x)*150)/5);
+
+            if(this.citizenTarget != null)
+                ctx.rotate(Math.cos(1.8*(this.x)*150)/5);
+            else
+                ctx.rotate(Math.cos((this.x)*150)/5);
+
             if(this.target.x < this.x)
                 ctx.scale(-1,1);
             ctx.drawImage(this.image, -this.width/2, -this.height-this.height/2, this.width, this.height);
@@ -551,6 +569,17 @@ class Dinosaur{
     }
 
     tick(){
+        if(objDragging == this)
+            return;
+
+
+        if(this.y < this.baseY){
+            this.y += 0.01;
+            return;
+        }else if(this.y > this.baseY){
+            this.y = this.baseY;
+        }
+
         if(Math.abs(this.x - this.target.x) <= 0.005){
             if(this.world == "prehistoric"){
                 this.wait = Math.floor(Math.random()*40 + 1);
@@ -558,15 +587,17 @@ class Dinosaur{
                 
             }else if(this.world == "present"){
                 if(this.citizenTarget != null){
+                    PARTICLES.spawnParticle(PARTICLE_BLOOD, this.citizenTarget.x, this.citizenTarget.y - 0.01, canvas, ctx);
                     citizens.shift();
                     this.citizenTarget = null;
                 }
 
                 this.wait = Math.floor(Math.random()*40 + 1);
-                if(citizens.length > 0){
+                if(citizens.length > 0 && timeState == timeStateDay){
                     this.citizenTarget = citizens[0];
                 }else{
                     this._randomTarget();
+                    triggerVictory(VICTORYDINOSAUR);
                 }
             }
         }
@@ -579,7 +610,7 @@ class Dinosaur{
         if(this.wait > 0)
             this.wait--;
         else
-            this.x += (this.target.x - this.x)/Math.abs(this.target.x - this.x)*0.002;
+            this.x += (this.target.x - this.x)/Math.abs(this.target.x - this.x)*0.002 * (this.citizenTarget == null? 1 : 1.8);
 
 
     }
@@ -697,7 +728,7 @@ class TimeMachine extends WindowController{
         var x = e.offsetX + e.view.screenX - canvas.offsetLeft;
         var y = e.offsetY + e.view.screenY + (e.view.outerHeight - e.view.innerHeight) - (window.screenY + canvas.offsetTop + (window.outerHeight - window.innerHeight));
         //setTimeout(this._checkforLeave, 50);
-        onclick(e, x, y);
+        onclick(e, x, y, "prehistoric");
     }
 
     _checkforLeave(){
@@ -705,7 +736,6 @@ class TimeMachine extends WindowController{
     }
 
     _onmousemove(e){
-        console.log("pree");
         if(objDragging != null){
             objDragging.world = "prehistoric";
             objDragging.ctx = ctxTimeMachine;
@@ -734,6 +764,86 @@ var data = {
     ]
 }
 //
+
+
+
+var PARTICLE_BLOOD = "blood";
+
+class Particles{
+    constructor(){
+        this.particles = [];
+    }
+
+    spawnParticle(type, x, y, pCanvas, pCtx, life = 2000){
+        var currTime = new Date().getTime();
+        var particle = {type: type, origin:{x: x, y: y}, birth: currTime, death: currTime + life, gravity: true, ctx: pCtx, canvas: pCanvas};
+        this._particleInit(particle);
+        this.particles.push(particle);
+        //console.log("Spawned " + type + " at (" + x + "," + y + ")");
+    }
+
+    _addBits(particle, amount, color, size){
+        particle.bits = [];
+        for(var i = 0 ; i < amount ; i++){
+            particle.bits.push({size: size, color: color, x: particle.origin.x, y: particle.origin.y, velocity: {x: Math.random()*0.005, y: -Math.random()*0.005}});
+        }
+    }
+
+    _particleInit(particle){
+        if(particle.type == PARTICLE_BLOOD){
+            this._addBits(particle, 10, "red", 2);
+        }
+    }
+
+    tick(){
+        var partHandler = this;
+        var i = 0 ;
+        this.particles.forEach(function(particle){
+            if(new Date().getTime() > particle.death){
+                partHandler.particles.splice(i, 1);
+                console.log("particled is dead");
+                return;
+            }
+
+            particle.bits.forEach(function(bit){
+                if(particle.gravity){
+                    bit.velocity.y += 0.001;
+                }
+                bit.x += bit.velocity.x;
+                bit.y += bit.velocity.y;
+
+            });
+            i++;
+        });
+    }
+
+    render(){
+        this.particles.forEach(function(partile){
+            console.log(partile.bits[0].color);
+            partile.bits.forEach(function(bit){;
+                partile.ctx.fillStyle = bit.color;
+                partile.ctx.fillRect(bit.x*partile.canvas.width, bit.y*partile.canvas.height, bit.size, bit.size);
+            });
+        })
+    }
+}
+
+
+
+
+
+
+
+
+var VICTORYDINOSAUR = {name: "Jurrasic Park"};
+
+
+function triggerVictory(vic){
+    if(!hasWon){
+        console.log(vic.name);
+        hasWon = true;
+    }
+}
 
 
 var citizens = [];
@@ -774,3 +884,6 @@ window.onload = function(){
 
     //timemachine = new TimeMachine();
 }
+
+
+var PARTICLES = new Particles();
