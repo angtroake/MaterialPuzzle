@@ -76,6 +76,55 @@ document.addEventListener("wheel", function(e){
 });
 
 
+var objDragging = null;
+
+
+canvas.onclick = function(e){
+    onclick(e, e.offsetX, e.offsetY);
+};
+
+//canvas.onmouseup = clickRelease;
+
+function onclick(e, x, y){
+    if(objDragging != null){
+        objDragging = null;
+        return;
+    }else{
+
+        x = x/canvas.width;
+        y = y/canvas.height;
+
+        for (var i = 0 ; i < dragable.length ; i++){
+            var obj = dragable[i];
+            if(x >= obj.x && x <= obj.x + obj.width/canvas.width){
+                if(y <= obj.y && y >= obj.y - obj.height/canvas.height){
+                    objDragging = obj;
+                    break;
+                }
+            }
+        }
+    }
+}
+
+var _mousePos = {x: 0, y: 0};
+window.onmousemove = function(e){
+    //_mousePos.x = e.offsetX;
+
+    if(objDragging != null){
+        console.log("fwww");
+        objDragging.ctx = ctx;
+        objDragging.world = "present";
+        objDragging.x = (e.offsetX - objDragging.width/2) / canvas.width;
+        objDragging.y = (e.offsetY + objDragging.height/2) / canvas.height;
+    }
+};
+
+function clickRelease(){
+    objDragging = null;
+}
+
+
+
 
 function render(){
     //Shadow Settings
@@ -171,7 +220,14 @@ function render(){
     windows.forEach(function(w){
         w.render();
     });
+
+    /*ctx.fillStyle = 'black';
+    ctx.font = "30px Arial";
+    ctx.fillText("(" + _mousePos.x + "," + _mousePos.y + ")", _mousePos.x + 10, _mousePos.y - 10);
+    */
 }
+
+
 
 function tick(){
     time++;
@@ -244,6 +300,8 @@ function tick(){
     */
 
 
+
+
     mapObjects.forEach(function(mo){
         mo.tick();
     });
@@ -263,7 +321,6 @@ function tick(){
     windows.forEach(function(w){
         w.tick();
     });
-
 
 }
 
@@ -455,20 +512,24 @@ class Dinosaur{
         this.x = x;
         this.y = y;
 
-        this.width = 50;
-        this.height = 100;
-
         this.world = "prehistoric";
+        this.ctx = ctxTimeMachine;
 
         this.citizenTarget = null;
         this.target = {"x": 0.5, "y": 0.5};
+
+        this.image = document.getElementById("dinosaur");
+        this.width = this.image.width/2;
+        this.height = this.image.height/2;
+
+        dragable.push(this);
     }
 
     render(){
         let mapX = this.x * canvas.width;
         let mapY = this.y * canvas.height;
 
-        var ctx = (this.world == "prehistoric" ? ctxTimeMachine: ctx);
+        var ctx = this.ctx;
 
         ctx.fillStyle = 'red';
         ctx.shadowBlur = 0;
@@ -477,13 +538,13 @@ class Dinosaur{
             ctx.save();
             ctx.translate(mapX + this.width/2, mapY + this.height/2);
             ctx.rotate(Math.cos((this.x - this.target.x)*150)/5);
-            
-            
-            ctx.fillRect(-this.width/2, -this.height/2, this.width, -this.height);
+            if(this.target.x < this.x)
+                ctx.scale(-1,1);
+            ctx.drawImage(this.image, -this.width/2, -this.height-this.height/2, this.width, this.height);
             ctx.restore();
         }else{
             //ctx.fillRect(mapX, mapY, this.width, -this.height);
-            ctx.fillRect(mapX, mapY, this.width, -this.height);
+            ctx.drawImage(this.image, mapX, mapY-this.height, this.width, this.height);
         }
 
         ctx.shadowBlur = 10;
@@ -531,6 +592,11 @@ class Dinosaur{
         }while(newX < 0.0 || newX > 1.0);
         this.target.x = newX;
     }
+}
+
+function setWorld(obj, world, ctx){
+    obj.world = world;
+    obj.ctx = ctx;
 }
 
 class Tree{
@@ -597,12 +663,21 @@ class WindowController{
 class TimeMachine extends WindowController{
     constructor(){
         super(150,150);
+        this.childWindow.document.body.innerHTML = "";
+        this.childWindow.document.head.innerHTML = "";
+        
         this.childWindow.document.head.innerHTML += "<title>Time Machine</title>";
+        this.childWindow.document.head.innerHTML += '<meta name="viewport" content="width=device-width, initial-scale=1.0" />';
         this.childWindow.document.head.innerHTML += "<style>body{margin: 0;}</style>"
         this.childWindow.document.body.innerHTML += "<canvas id='timemachine' width='" + this.childWindow.innerWidth + "' height='" + this.childWindow.innerHeight + "'></canvas>";
         this.tmCanvas = this.childWindow.document.getElementById("timemachine");
         this.ctx = this.tmCanvas.getContext('2d');
         
+        var tm = this;
+
+        this.tmCanvas.onclick = function(e){tm._onclick(e,tm);};
+        //this.tmCanvas.onmouseup = clickRelease;
+        this.tmCanvas.onmousemove = this._onmousemove;
     }
 
     render(){
@@ -613,10 +688,33 @@ class TimeMachine extends WindowController{
 
     tick(){
         super.tick();
-
+        
         this.tmCanvas.width = this.childWindow.innerWidth;
         this.tmCanvas.height = this.childWindow.innerHeight;
+    }
+
+    _onclick(e){
+        var x = e.offsetX + e.view.screenX - canvas.offsetLeft;
+        var y = e.offsetY + e.view.screenY + (e.view.outerHeight - e.view.innerHeight) - (window.screenY + canvas.offsetTop + (window.outerHeight - window.innerHeight));
+        //setTimeout(this._checkforLeave, 50);
+        onclick(e, x, y);
+    }
+
+    _checkforLeave(){
+
+    }
+
+    _onmousemove(e){
+        console.log("pree");
+        if(objDragging != null){
+            objDragging.world = "prehistoric";
+            objDragging.ctx = ctxTimeMachine;
+            var x = e.offsetX + e.view.screenX - canvas.offsetLeft;
+            var y = e.offsetY + e.view.screenY + (e.view.outerHeight - e.view.innerHeight) - (window.screenY + canvas.offsetTop + (window.outerHeight - window.innerHeight));
+            objDragging.x = (x - objDragging.width/2)/canvas.width;
+            objDragging.y = (y + objDragging.height/2)/canvas.height;
         
+        }
     }
 }
 
@@ -643,6 +741,8 @@ var buildings = [];
 var windows = [];
 
 var prehistoricObjects = [];
+
+var dragable = [];
 
 var timemachine = null;
 
